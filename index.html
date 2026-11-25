@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coinverter</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Oswald:wght@300;500;600&display=swap">
+<style>
+/* Layout: тёмная панель с прожектором сверху, срезанные углы, жёлтый акцент только на сумме и активных элементах. */
+:root {
+  --bg: #08090b;
+  --win: #111317;
+  --line: #262a31;
+  --fg: #ecebe6;
+  --muted: #7d838c;
+  --accent: #ffd300;
+  --accent-ink: #0b0c0e;
+  --hover: #1a1d23;
+  --display: "Oswald", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font: "Inter", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  background: radial-gradient(ellipse 70% 45% at 50% -8%, rgba(255, 211, 0, .16), transparent 70%), var(--bg);
+  color: var(--fg); font-family: var(--font);
+  padding-block: 32px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; justify-content: center; align-items: flex-start;
+}
+.win {
+  position: relative; width: 100%; max-width: 400px; background: var(--win);
+  clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.win::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--accent); z-index: 2; }
+.bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; height: 46px; padding: 3px 12px 0 22px; border-bottom: 1px solid var(--line); }
+.dots { display: none; }
+.bar h1 { grid-column: 1; margin: 0; font-family: var(--display); font-size: 17px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase; color: var(--accent); }
+.bar .right { grid-column: 3; justify-self: end; }
+.icon { background: none; border: 0; color: var(--muted); width: 34px; height: 34px; display: grid; place-items: center; cursor: pointer; }
+.icon:hover { background: var(--hover); color: var(--accent); }
+.icon:focus-visible, .row:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.icon svg { width: 18px; height: 18px; }
+
+.row { position: relative; display: grid; grid-template-columns: 30px 40px minmax(0, 1fr); align-items: center; gap: 0 12px; width: 100%; min-height: 56px; padding: 0 22px; border: 0; border-bottom: 1px solid var(--line); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.row:last-of-type { border-bottom: 0; }
+button.row:hover { background: var(--hover); }
+button.row:hover::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+.row .sym { font-family: var(--display); font-size: 15px; letter-spacing: .06em; color: var(--muted); }
+.row .val { font-family: var(--display); font-size: 25px; font-weight: 300; letter-spacing: .02em; text-align: right; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row.base { min-height: 96px; cursor: default; background: linear-gradient(180deg, rgba(255, 211, 0, .07), transparent); }
+.row.base .sym { color: var(--accent); font-size: 18px; }
+.row.base input { width: 100%; min-width: 0; border: 0; background: none; color: var(--fg); font-family: var(--display); font-size: 48px; font-weight: 300; letter-spacing: .02em; text-align: right; padding: 0; font-variant-numeric: tabular-nums; caret-color: var(--accent); }
+.row.base input:focus { outline: none; }
+.row.base:focus-within { box-shadow: inset 0 -2px 0 var(--accent); }
+.flag { width: 30px; height: 20px; display: block; box-shadow: 0 0 0 1px rgba(255, 255, 255, .14); }
+
+.foot { display: grid; grid-template-columns: 42px 1fr 42px; align-items: center; height: 46px; padding: 0 10px; border-top: 1px solid var(--line); }
+.foot .note { text-align: center; font-family: var(--display); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.spin svg { animation: spin .6s ease; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin svg { animation: none; } }
+
+.settings { border-top: 1px solid var(--line); padding: 16px 22px 24px; display: grid; gap: 10px; }
+.settings h2 { margin: 0; font-family: var(--display); font-size: 13px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
+.settings label { display: grid; grid-template-columns: minmax(0, 1fr) 130px; align-items: center; gap: 12px; font-size: 14px; }
+.settings input { width: 100%; min-width: 0; padding: 7px 9px; border: 1px solid var(--line); border-radius: 0; background: var(--bg); color: var(--fg); font-family: var(--display); font-size: 15px; letter-spacing: .03em; text-align: right; font-variant-numeric: tabular-nums; }
+.settings p { margin: 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--accent); color: var(--accent-ink); font-family: var(--display); letter-spacing: .08em; text-transform: uppercase; font-size: 13px; padding: 8px 16px; }
+</style>
+</head>
+<body>
+
+<main class="win" aria-label="Конвертер валют">
+  <div class="bar">
+    <div class="dots" aria-hidden="true"><i></i><i></i><i></i></div>
+    <h1>Coinverter</h1>
+    <div class="right">
+      <button class="icon" id="share" type="button" aria-label="Скопировать результат" title="Скопировать результат">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>
+      </button>
+    </div>
+  </div>
+  <div id="list"></div>
+  <div class="foot">
+    <button class="icon" id="refresh" type="button" aria-label="Сбросить курсы" title="Сбросить курсы к исходным">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.5-5.8"/><path d="M20 4v5h-5"/></svg>
+    </button>
+    <div class="note" id="note">Курсы ЦБ РФ · 24.11.2026</div>
+    <button class="icon" id="gear" type="button" aria-label="Настроить курсы" aria-expanded="false" title="Настроить курсы">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+  </div>
+  <section class="settings" id="settings" hidden>
+    <h2>Курсы к рублю</h2>
+    <div id="rates" style="display:grid;gap:10px"></div>
+    <p>Курсы подтягиваются при открытии и по кнопке обновления: валюты с сайта ЦБ РФ, биткоин с CoinGecko. Значения можно поправить вручную, до следующего обновления.</p>
+  </section>
+</main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+  var DEFAULTS = { RUB: 1, USD: 82.1488, EUR: 90.2815, GBP: 107.6314, JPY: 0.515136, BTC: 4893600 };
+  var CUR = [
+    { code: 'RUB', sym: '₽', dec: 2 },
+    { code: 'USD', sym: '$', dec: 2 },
+    { code: 'EUR', sym: '€', dec: 2 },
+    { code: 'GBP', sym: '£', dec: 2 },
+    { code: 'JPY', sym: '¥', dec: 2 },
+    { code: 'BTC', sym: 'BTC', dec: 8 }
+  ];
+  var KEY = 'coinverter-rates-v1';
+  var rates = Object.assign({}, DEFAULTS);
+  try {
+    var saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (saved) CUR.forEach(function (c) { if (saved[c.code] > 0) rates[c.code] = saved[c.code]; });
+  } catch (e) {}
+
+  var base = 'RUB';
+  var amount = '30000';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var list = $('list');
+
+  function eu() {
+    var s = '';
+    for (var i = 0; i < 12; i++) {
+      var a = i * Math.PI / 6;
+      s += '<circle cx="' + (15 + 6 * Math.sin(a)).toFixed(2) + '" cy="' + (10 - 6 * Math.cos(a)).toFixed(2) + '" r=".9" fill="#fc0"/>';
+    }
+    return '<rect width="30" height="20" fill="#039"/>' + s;
+  }
+  var FLAGS = {
+    RUB: '<rect width="30" height="20" fill="#fff"/><rect y="6.67" width="30" height="6.67" fill="#0039a6"/><rect y="13.33" width="30" height="6.67" fill="#d52b1e"/>',
+    USD: '<rect width="30" height="20" fill="#fff"/><g fill="#b22234"><rect width="30" height="2.86"/><rect y="5.71" width="30" height="2.86"/><rect y="11.43" width="30" height="2.86"/><rect y="17.14" width="30" height="2.86"/></g><rect width="13" height="11.4" fill="#3c3b6e"/><g fill="#fff"><circle cx="2.5" cy="2.5" r=".6"/><circle cx="6.5" cy="2.5" r=".6"/><circle cx="10.5" cy="2.5" r=".6"/><circle cx="4.5" cy="5.7" r=".6"/><circle cx="8.5" cy="5.7" r=".6"/><circle cx="2.5" cy="8.9" r=".6"/><circle cx="6.5" cy="8.9" r=".6"/><circle cx="10.5" cy="8.9" r=".6"/></g>',
+    EUR: eu(),
+    GBP: '<g transform="scale(.5,.6667)"><rect width="60" height="30" fill="#012169"/><path d="M0 0L60 30M60 0L0 30" stroke="#fff" stroke-width="6"/><path d="M0 0L60 30M60 0L0 30" stroke="#c8102e" stroke-width="2"/><path d="M30 0V30M0 15H60" stroke="#fff" stroke-width="10"/><path d="M30 0V30M0 15H60" stroke="#c8102e" stroke-width="6"/></g>',
+    JPY: '<rect width="30" height="20" fill="#fff"/><circle cx="15" cy="10" r="6" fill="#bc002d"/>',
+    BTC: '<circle cx="15" cy="10" r="10" fill="#f7931a"/><text x="15" y="14.6" text-anchor="middle" font-size="13" font-weight="700" font-family="Arial, sans-serif" fill="#fff">₿</text>'
+  };
+  function flag(code) {
+    return '<svg class="flag" viewBox="0 0 30 20" aria-hidden="true">' + FLAGS[code] + '</svg>';
+  }
+  function meta(code) { return CUR.filter(function (c) { return c.code === code; })[0]; }
+
+  function parse(s) {
+    var n = parseFloat(String(s).replace(/[\s ]/g, '').replace(',', '.'));
+    return isFinite(n) ? n : 0;
+  }
+  function convert(code) { return parse(amount) * rates[base] / rates[code]; }
+  function fmt(n, dec) {
+    return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: dec }).format(n);
+  }
+  function plain(n, dec) {
+    return parseFloat(n.toFixed(dec)).toString().replace('.', ',');
+  }
+
+  function render() {
+    var html = '';
+    var b = meta(base);
+    html += '<div class="row base">' + flag(base) + '<span class="sym">' + b.sym + '</span>' +
+      '<input id="amt" type="text" inputmode="decimal" autocomplete="off" aria-label="Сумма в ' + base + '" value="' + amount + '"></div>';
+    CUR.forEach(function (c) {
+      if (c.code === base) return;
+      html += '<button class="row" type="button" data-code="' + c.code + '" aria-label="Сделать ' + c.code + ' основной валютой">' +
+        flag(c.code) + '<span class="sym">' + c.sym + '</span><span class="val" data-val="' + c.code + '"></span></button>';
+    });
+    list.innerHTML = html;
+    update();
+    var inp = $('amt');
+    inp.addEventListener('input', function () {
+      var v = inp.value.replace(/[^0-9.,]/g, '');
+      var m = v.search(/[.,]/);
+      if (m >= 0) v = v.slice(0, m + 1) + v.slice(m + 1).replace(/[.,]/g, '');
+      if (v !== inp.value) inp.value = v;
+      amount = v;
+      update();
+    });
+    inp.addEventListener('focus', function () { inp.select(); });
+  }
+
+  function update() {
+    CUR.forEach(function (c) {
+      if (c.code === base) return;
+      var el = list.querySelector('[data-val="' + c.code + '"]');
+      if (el) el.textContent = fmt(convert(c.code), c.dec);
+    });
+  }
+
+  list.addEventListener('click', function (e) {
+    var row = e.target.closest('button.row');
+    if (!row) return;
+    var code = row.getAttribute('data-code');
+    var n = convert(code);
+    base = code;
+    amount = plain(n, meta(code).dec);
+    render();
+    var inp = $('amt');
+    if (inp) inp.focus();
+  });
+
+  /* настройки курсов */
+  function buildRates() {
+    var box = $('rates');
+    box.innerHTML = '';
+    CUR.forEach(function (c) {
+      if (c.code === 'RUB') return;
+      var label = document.createElement('label');
+      var unit = c.code === 'BTC' ? '1 BTC' : '1 ' + c.code;
+      label.innerHTML = '<span>' + unit + ' =  ₽</span>';
+      var inp = document.createElement('input');
+      inp.type = 'text';
+      inp.inputMode = 'decimal';
+      inp.id = 'rate-' + c.code;
+      inp.value = String(rates[c.code]).replace('.', ',');
+      inp.addEventListener('input', function () {
+        var v = parse(inp.value);
+        if (v > 0) {
+          rates[c.code] = v;
+          try { localStorage.setItem(KEY, JSON.stringify(rates)); } catch (e) {}
+          update();
+        }
+      });
+      label.appendChild(inp);
+      box.appendChild(label);
+    });
+  }
+  $('gear').addEventListener('click', function () {
+    var s = $('settings');
+    s.hidden = !s.hidden;
+    $('gear').setAttribute('aria-expanded', String(!s.hidden));
+    if (!s.hidden) buildRates();
+  });
+  function setNote(t) { $('note').textContent = t; }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function getJson(url) {
+    return fetch(url).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    });
+  }
+  function load(manual) {
+    var btn = $('refresh');
+    btn.classList.remove('spin'); void btn.offsetWidth; btn.classList.add('spin');
+    setNote('Обновляю курсы…');
+    getJson('https://www.cbr-xml-daily.ru/daily_json.js').then(function (d) {
+      ['USD', 'EUR', 'GBP', 'JPY'].forEach(function (code) {
+        var v = d.Valute[code];
+        rates[code] = v.Value / v.Nominal;
+      });
+      var date = new Date(d.Date).toLocaleDateString('ru-RU');
+      return getJson('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd').then(function (b) {
+        rates.BTC = b.bitcoin.usd * rates.USD;
+        return date;
+      }, function () { return date; });
+    }).then(function (date) {
+      try { localStorage.setItem(KEY, JSON.stringify(rates)); } catch (e) {}
+      var now = new Date();
+      setNote('ЦБ РФ · ' + date + ' · обновлено ' + pad(now.getHours()) + ':' + pad(now.getMinutes()));
+      if (!$('settings').hidden) buildRates();
+      update();
+      if (manual) toast('Курсы обновлены');
+    }).catch(function () {
+      setNote('Нет связи · курсы от 24.11.2026');
+      toast('Не удалось обновить курсы');
+    });
+  }
+  $('refresh').addEventListener('click', function () { load(true); });
+
+  /* копирование */
+  var tt;
+  function toast(msg) {
+    var t = $('toast'); t.textContent = msg; t.hidden = false;
+    clearTimeout(tt); tt = setTimeout(function () { t.hidden = true; }, 1800);
+  }
+  $('share').addEventListener('click', function () {
+    var lines = [fmt(parse(amount), meta(base).dec) + ' ' + meta(base).sym];
+    CUR.forEach(function (c) {
+      if (c.code !== base) lines.push(fmt(convert(c.code), c.dec) + ' ' + c.sym);
+    });
+    var text = lines.join('\n');
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(ta);
+      toast(ok ? 'Скопировано' : 'Не удалось скопировать');
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { toast('Скопировано'); }, fallback);
+    } else { fallback(); }
+  });
+
+  render();
+  load(false);
+})();
+</script>
+</body>
+</html>
